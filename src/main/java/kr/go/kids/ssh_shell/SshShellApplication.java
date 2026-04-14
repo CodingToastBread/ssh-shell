@@ -5,6 +5,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -13,7 +14,11 @@ import java.util.concurrent.Callable;
     name = "ssh-shell",
     mixinStandardHelpOptions = true,
     version = "ssh-shell 0.0.1",
-    description = "Interactive SSH client for containers without OpenSSH."
+    description = {
+        "Interactive SSH client for containers without OpenSSH.",
+        "To pass dashed flags to the remote command, quote the command",
+        "(\"ls -la\") or separate with --  (ssh-shell host -- ls -la)."
+    }
 )
 public class SshShellApplication implements Callable<Integer> {
 
@@ -46,7 +51,9 @@ public class SshShellApplication implements Callable<Integer> {
     boolean strictHostKey;
 
     public static void main(String[] args) {
-        System.exit(new CommandLine(new SshShellApplication()).execute(args));
+        CommandLine cmd = new CommandLine(new SshShellApplication())
+            .setUnmatchedOptionsArePositionalParams(true);
+        System.exit(cmd.execute(args));
     }
 
     @Override
@@ -59,13 +66,24 @@ public class SshShellApplication implements Callable<Integer> {
             return 2;
         }
 
-        // TODO next iteration:
-        //   - build SshClient, connect, authenticate (publickey if -i, password if --password)
-        //   - host key policy per --strict-host-key
-        //   - command == null  -> ChannelShell + PTY + JLine raw-mode pump + SIGWINCH
-        //     command != null  -> ChannelExec + stdin/stdout/stderr forward + exit status
-        System.err.println("[scaffold] target=" + target
-            + (command == null ? " (interactive)" : " exec=" + command));
-        return 0;
+        if (password != null) {
+            System.err.println("ssh-shell: password auth not yet implemented; use -i <private-key>");
+            return 2;
+        }
+        if (command == null || command.isEmpty()) {
+            System.err.println("ssh-shell: interactive shell not yet implemented; provide a remote COMMAND");
+            return 2;
+        }
+        if (strictHostKey) {
+            System.err.println("ssh-shell: --strict-host-key not yet implemented; still accepting any host key");
+        }
+
+        try {
+            return SshExec.run(target, identity, command);
+        } catch (IOException e) {
+            String msg = e.getMessage();
+            System.err.println("ssh-shell: " + (msg != null ? msg : e.toString()));
+            return SshExec.exitCodeForIoFailure();
+        }
     }
 }
