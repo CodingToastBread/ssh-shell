@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -26,12 +27,12 @@ final class SshExec {
 
     private SshExec() {}
 
-    static int run(SshTarget target, Path identity, List<String> command) throws IOException {
-        if (identity == null) {
-            System.err.println("ssh-shell: no authentication method; pass -i <private-key>");
+    static int run(SshTarget target, Path identity, char[] password, List<String> command) throws IOException {
+        if (identity == null && password == null) {
+            System.err.println("ssh-shell: no authentication method; pass -i <private-key> or --password");
             return EXIT_USAGE;
         }
-        if (!Files.isReadable(identity)) {
+        if (identity != null && !Files.isReadable(identity)) {
             System.err.println("ssh-shell: cannot read private key file: " + identity);
             return EXIT_USAGE;
         }
@@ -48,7 +49,19 @@ final class SshExec {
                     .verify(CONNECT_TIMEOUT)
                     .getSession()) {
 
-                session.setKeyIdentityProvider(new FileKeyPairProvider(identity));
+                if (identity != null) {
+                    session.setKeyIdentityProvider(new FileKeyPairProvider(identity));
+                }
+                if (password != null) {
+                    // addPasswordIdentity only accepts String; convert, register, then
+                    // wipe the caller's char[] so the secret is not kept around longer
+                    // than necessary. The interned String lingers until GC - best we
+                    // can do without a char[]-aware MINA API.
+                    String pw = new String(password);
+                    Arrays.fill(password, '\0');
+                    session.addPasswordIdentity(pw);
+                }
+
                 session.auth().verify(AUTH_TIMEOUT);
 
                 try (ChannelExec channel = session.createExecChannel(remoteCmd)) {

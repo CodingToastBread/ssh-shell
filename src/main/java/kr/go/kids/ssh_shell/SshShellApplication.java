@@ -66,10 +66,6 @@ public class SshShellApplication implements Callable<Integer> {
             return 2;
         }
 
-        if (password != null) {
-            System.err.println("ssh-shell: password auth not yet implemented; use -i <private-key>");
-            return 2;
-        }
         if (command == null || command.isEmpty()) {
             System.err.println("ssh-shell: interactive shell not yet implemented; provide a remote COMMAND");
             return 2;
@@ -79,7 +75,7 @@ public class SshShellApplication implements Callable<Integer> {
         }
 
         try {
-            return SshExec.run(target, identity, command);
+            return SshExec.run(target, identity, password, command);
         } catch (IOException e) {
             String msg = e.getMessage();
             System.err.println("ssh-shell: " + (msg != null ? msg : e.toString()));

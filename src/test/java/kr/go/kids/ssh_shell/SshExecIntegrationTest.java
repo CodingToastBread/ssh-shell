@@ -24,6 +24,7 @@ import java.security.KeyPair;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -63,6 +64,7 @@ class SshExecIntegrationTest {
         sshd.setPort(0);
         sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(hostKeyFile));
         sshd.setPublickeyAuthenticator((user, key, session) -> key.equals(userKeyPair.getPublic()));
+        sshd.setPasswordAuthenticator((user, pw, session) -> "s3cret".equals(pw));
         sshd.setCommandFactory(commandFactory);
         sshd.start();
     }
@@ -78,7 +80,7 @@ class SshExecIntegrationTest {
     }
 
     @Test
-    void happyPath_execReturnsZero_andStdoutIsForwarded() throws Exception {
+    void publickey_happyPath_execReturnsZero_andStdoutIsForwarded() throws Exception {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream originalOut = System.out;
         System.setOut(new PrintStream(captured, true, StandardCharsets.UTF_8));
@@ -86,6 +88,7 @@ class SshExecIntegrationTest {
             int exit = SshExec.run(
                 new SshTarget("tester", "127.0.0.1", sshd.getPort()),
                 userKeyFile,
+                null,
                 List.of("echo", "hello"));
             assertEquals(0, exit);
         } finally {
@@ -98,10 +101,36 @@ class SshExecIntegrationTest {
     }
 
     @Test
+    void password_happyPath_authenticatesWithoutIdentity() throws Exception {
+        char[] pw = "s3cret".toCharArray();
+        int exit = SshExec.run(
+            new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+            null,
+            pw,
+            List.of("echo", "pw-ok"));
+        assertEquals(0, exit);
+        assertEquals("echo pw-ok", commandFactory.lastCommand.get());
+        // SshExec wipes the caller's char[] once the password has been registered
+        assertArrayEquals(new char[]{0, 0, 0, 0, 0, 0}, pw,
+            "password char[] should be zeroed after SshExec.run");
+    }
+
+    @Test
+    void password_wrongPassword_surfacesAsIoException() {
+        char[] pw = "wrong".toCharArray();
+        assertThrows(IOException.class, () -> SshExec.run(
+            new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+            null,
+            pw,
+            List.of("echo", "nope")));
+    }
+
+    @Test
     void nonZeroRemoteExitStatusPropagates() throws Exception {
         int exit = SshExec.run(
             new SshTarget("tester", "127.0.0.1", sshd.getPort()),
             userKeyFile,
+            null,
             List.of("FAIL", "42"));
         assertEquals(42, exit);
     }
@@ -117,6 +146,7 @@ class SshExecIntegrationTest {
         assertThrows(IOException.class, () -> SshExec.run(
             new SshTarget("tester", "127.0.0.1", sshd.getPort()),
             wrongKey,
+            null,
             List.of("echo", "nope")));
     }
 
