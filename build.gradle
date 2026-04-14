@@ -1,0 +1,66 @@
+plugins {
+    id 'java'
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+group = 'kr.go.kids'
+version = '0.0.1-SNAPSHOT'
+description = 'ssh_shell'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+def appMainClass = 'kr.go.kids.ssh_shell.SshShellApplication'
+
+ext {
+    picocliVersion = '4.7.6'
+    sshdVersion    = '2.14.0'
+    jlineVersion   = '3.27.1'
+    lombokVersion  = '1.18.34'
+    slf4jVersion   = '2.0.16'
+}
+
+dependencies {
+    implementation "info.picocli:picocli:${picocliVersion}"
+    annotationProcessor "info.picocli:picocli-codegen:${picocliVersion}"
+
+    implementation "org.apache.sshd:sshd-core:${sshdVersion}"
+    implementation "org.jline:jline:${jlineVersion}"
+
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    runtimeOnly    "org.slf4j:slf4j-simple:${slf4jVersion}"
+
+    compileOnly         "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly    'org.junit.platform:junit-platform-launcher'
+    testCompileOnly         "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes 'Main-Class': appMainClass
+    }
+}
+
+shadowJar {
+    archiveFileName = 'ssh.jar'
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': appMainClass
+    }
+}
