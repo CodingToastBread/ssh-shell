@@ -71,17 +71,15 @@ public class SshShellApplication implements Callable<Integer> {
             return 2;
         }
 
-        if (command == null || command.isEmpty()) {
-            System.err.println("ssh-shell: interactive shell not yet implemented; provide a remote COMMAND");
-            return 2;
-        }
-
         Path knownHosts = knownHostsPath != null
             ? knownHostsPath
             : Paths.get(System.getProperty("user.home"), ".ssh", "known_hosts");
         KnownHostsVerifier verifier = new KnownHostsVerifier(knownHosts, strictHostKey);
 
         try {
+            if (command == null || command.isEmpty()) {
+                return SshShell.run(target, verifier, identity, password);
+            }
             return SshExec.run(target, verifier, identity, password, command);
         } catch (IOException e) {
             String msg = e.getMessage();
