@@ -43,8 +43,9 @@ public class SshShellApplication implements Callable<Integer> {
         description = "Path to a private key file (publickey authentication).")
     Path identity;
 
-    @Option(names = "--password", interactive = true, arity = "0..1",
-        description = "Use password auth. Prompts without echo if no value is given.")
+    @Option(names = "--password", interactive = true, arity = "0",
+        description = "Prompt for password (no echo). No CLI value accepted "
+            + "to avoid leaking into shell history.")
     char[] password;
 
     @Option(names = "--strict-host-key",
