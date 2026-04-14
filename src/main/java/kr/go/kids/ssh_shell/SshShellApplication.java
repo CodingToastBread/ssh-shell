@@ -7,6 +7,7 @@ import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -47,8 +48,12 @@ public class SshShellApplication implements Callable<Integer> {
     char[] password;
 
     @Option(names = "--strict-host-key",
-        description = "Fail if the server host key is unknown (default: warn-then-accept).")
+        description = "Fail if the server host key is unknown (default: trust-on-first-use).")
     boolean strictHostKey;
+
+    @Option(names = "--known-hosts",
+        description = "Path to known_hosts file (default: ~/.ssh/known_hosts).")
+    Path knownHostsPath;
 
     public static void main(String[] args) {
         CommandLine cmd = new CommandLine(new SshShellApplication())
@@ -70,12 +75,14 @@ public class SshShellApplication implements Callable<Integer> {
             System.err.println("ssh-shell: interactive shell not yet implemented; provide a remote COMMAND");
             return 2;
         }
-        if (strictHostKey) {
-            System.err.println("ssh-shell: --strict-host-key not yet implemented; still accepting any host key");
-        }
+
+        Path knownHosts = knownHostsPath != null
+            ? knownHostsPath
+            : Paths.get(System.getProperty("user.home"), ".ssh", "known_hosts");
+        KnownHostsVerifier verifier = new KnownHostsVerifier(knownHosts, strictHostKey);
 
         try {
-            return SshExec.run(target, identity, password, command);
+            return SshExec.run(target, verifier, identity, password, command);
         } catch (IOException e) {
             String msg = e.getMessage();
             System.err.println("ssh-shell: " + (msg != null ? msg : e.toString()));

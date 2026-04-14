@@ -1,5 +1,6 @@
 package kr.go.kids.ssh_shell;
 
+import org.apache.sshd.client.keyverifier.AcceptAllServerKeyVerifier;
 import org.apache.sshd.server.Environment;
 import org.apache.sshd.server.ExitCallback;
 import org.apache.sshd.server.SshServer;
@@ -87,6 +88,7 @@ class SshExecIntegrationTest {
         try {
             int exit = SshExec.run(
                 new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+                AcceptAllServerKeyVerifier.INSTANCE,
                 userKeyFile,
                 null,
                 List.of("echo", "hello"));
@@ -105,6 +107,7 @@ class SshExecIntegrationTest {
         char[] pw = "s3cret".toCharArray();
         int exit = SshExec.run(
             new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+            AcceptAllServerKeyVerifier.INSTANCE,
             null,
             pw,
             List.of("echo", "pw-ok"));
@@ -120,6 +123,7 @@ class SshExecIntegrationTest {
         char[] pw = "wrong".toCharArray();
         assertThrows(IOException.class, () -> SshExec.run(
             new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+            AcceptAllServerKeyVerifier.INSTANCE,
             null,
             pw,
             List.of("echo", "nope")));
@@ -129,6 +133,7 @@ class SshExecIntegrationTest {
     void nonZeroRemoteExitStatusPropagates() throws Exception {
         int exit = SshExec.run(
             new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+            AcceptAllServerKeyVerifier.INSTANCE,
             userKeyFile,
             null,
             List.of("FAIL", "42"));
@@ -145,6 +150,7 @@ class SshExecIntegrationTest {
 
         assertThrows(IOException.class, () -> SshExec.run(
             new SshTarget("tester", "127.0.0.1", sshd.getPort()),
+            AcceptAllServerKeyVerifier.INSTANCE,
             wrongKey,
             null,
             List.of("echo", "nope")));

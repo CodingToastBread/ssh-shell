@@ -3,7 +3,7 @@ package kr.go.kids.ssh_shell;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelExec;
 import org.apache.sshd.client.channel.ClientChannelEvent;
-import org.apache.sshd.client.keyverifier.AcceptAllServerKeyVerifier;
+import org.apache.sshd.client.keyverifier.ServerKeyVerifier;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.keyprovider.FileKeyPairProvider;
 
@@ -27,7 +27,11 @@ final class SshExec {
 
     private SshExec() {}
 
-    static int run(SshTarget target, Path identity, char[] password, List<String> command) throws IOException {
+    static int run(SshTarget target,
+                   ServerKeyVerifier hostKeyVerifier,
+                   Path identity,
+                   char[] password,
+                   List<String> command) throws IOException {
         if (identity == null && password == null) {
             System.err.println("ssh-shell: no authentication method; pass -i <private-key> or --password");
             return EXIT_USAGE;
@@ -40,10 +44,8 @@ final class SshExec {
         String remoteCmd = String.join(" ", command);
 
         try (SshClient client = SshClient.setUpDefaultClient()) {
-            client.setServerKeyVerifier(AcceptAllServerKeyVerifier.INSTANCE);
+            client.setServerKeyVerifier(hostKeyVerifier);
             client.start();
-            System.err.println(
-                "ssh-shell: warning - accepting any host key (host-key verification not yet implemented)");
 
             try (ClientSession session = client.connect(target.user(), target.host(), target.port())
                     .verify(CONNECT_TIMEOUT)
