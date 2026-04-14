@@ -51,13 +51,20 @@ public class SshShellApplication implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        SshTarget target;
+        try {
+            target = SshTarget.resolve(destination, login, port);
+        } catch (IllegalArgumentException e) {
+            System.err.println("ssh-shell: " + e.getMessage());
+            return 2;
+        }
+
         // TODO next iteration:
-        //   1) parse destination into user/host
-        //   2) build SshClient, connect, authenticate (publickey if -i, password if --password)
-        //   3) host key policy per --strict-host-key
-        //   4) command == null  -> ChannelShell + PTY + JLine raw-mode pump + SIGWINCH
-        //      command != null  -> ChannelExec + stdin/stdout/stderr forward + exit status
-        System.err.println("[scaffold] target=" + destination
+        //   - build SshClient, connect, authenticate (publickey if -i, password if --password)
+        //   - host key policy per --strict-host-key
+        //   - command == null  -> ChannelShell + PTY + JLine raw-mode pump + SIGWINCH
+        //     command != null  -> ChannelExec + stdin/stdout/stderr forward + exit status
+        System.err.println("[scaffold] target=" + target
             + (command == null ? " (interactive)" : " exec=" + command));
         return 0;
     }
