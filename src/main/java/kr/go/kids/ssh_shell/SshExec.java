@@ -57,7 +57,7 @@ final class SshExec {
                     channel.setErr(System.err);
 
                     channel.open().verify(CHANNEL_TIMEOUT);
-                    channel.waitFor(EnumSet.of(ClientChannelEvent.CLOSED), Duration.ZERO);
+                    channel.waitFor(EnumSet.of(ClientChannelEvent.CLOSED), Duration.ofDays(1));
 
                     Integer status = channel.getExitStatus();
                     return status != null ? status : EXIT_UNKNOWN_STATUS;
